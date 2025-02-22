@@ -112,7 +112,7 @@ Tabs.Main:AddButton({
     end
 })
 
--- Przycisk dodający i respawnuący Part na mojej pozycji
+-- Przycisk respawnu Partu na mojej pozycji
 local partInstance = nil
 Tabs.Main:AddButton({
     Title = "Respawn Part na Mojej Pozycji 🟥",
