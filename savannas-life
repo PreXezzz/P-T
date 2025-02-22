@@ -1,0 +1,575 @@
+-- Ładowanie Fluent i dodatków
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Tworzenie okna
+local Window = Fluent:CreateWindow({
+    Title = "Życie Sawanna",
+    SubTitle = "by P&T Games",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- Tworzenie zakładek
+local Tabs = {
+    Main = Window:AddTab({ Title = "Główne", Icon = "home" }),
+    Settings = Window:AddTab({ Title = "Ustawienia", Icon = "settings" })
+}
+
+-- Powiadomienie przy uruchomieniu
+Fluent:Notify({
+    Title = "🚀 Skrypt Załadowany",
+    Content = "Witaj w Życie Sawanna by P&T Games!",
+    Duration = 8
+})
+
+-- Suwak szybkości chodzenia
+local WalkSpeedSlider = Tabs.Main:AddSlider("WalkSpeed", {
+    Title = "Szybkość Chodzenia",
+    Description = "Dostosuj prędkość ruchu",
+    Default = 16,
+    Min = 16,
+    Max = 500,
+    Rounding = 1,
+    Callback = function(Value)
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = Value
+        end
+    end
+})
+
+-- Suwak wysokości skoku
+local JumpPowerSlider = Tabs.Main:AddSlider("JumpPower", {
+    Title = "Wysokość Skoku",
+    Description = "Dostosuj wysokość skoku",
+    Default = 50,
+    Min = 50,
+    Max = 500,
+    Rounding = 1,
+    Callback = function(Value)
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = Value
+        end
+    end
+})
+
+-- Suwak HP
+local HPSlider = Tabs.Main:AddSlider("HP", {
+    Title = "Punkty Życia (HP)",
+    Description = "Ustaw swoje HP",
+    Default = 100,
+    Min = 1,
+    Max = 1000,
+    Rounding = 1,
+    Callback = function(Value)
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.MaxHealth = Value
+            humanoid.Health = Value
+        end
+    end
+})
+
+-- Suwak prędkości latania
+local FlySpeedSlider = Tabs.Main:AddSlider("FlySpeed", {
+    Title = "Prędkość Latania",
+    Description = "Dostosuj prędkość latania",
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(Value)
+        _G.FlySpeed = Value
+    end
+})
+
+-- Suwak FOV
+local FOVSlider = Tabs.Main:AddSlider("FOV", {
+    Title = "Pole Widzenia (FOV)",
+    Description = "Dostosuj pole widzenia",
+    Default = 70,
+    Min = 30,
+    Max = 120,
+    Rounding = 1,
+    Callback = function(Value)
+        workspace.CurrentCamera.FieldOfView = Value
+    end
+})
+
+-- Toggle Soft AIM
+local SoftAimToggle = Tabs.Main:AddToggle("SoftAim", {
+    Title = "Soft AIM (Śledzenie Gracza)",
+    Default = false,
+    Callback = function(Value)
+        _G.SoftAimEnabled = Value
+        if Value then
+            task.spawn(function()
+                while _G.SoftAimEnabled do
+                    local closestPlayer = nil
+                    local shortestDistance = math.huge
+                    local localPlayer = game.Players.LocalPlayer
+                    local camera = workspace.CurrentCamera
+                    
+                    for _, player in pairs(game.Players:GetPlayers()) do
+                        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local distance = (localPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                closestPlayer = player
+                            end
+                        end
+                    end
+                    
+                    if closestPlayer then
+                        camera.CFrame = CFrame.new(camera.CFrame.Position, closestPlayer.Character.HumanoidRootPart.Position)
+                    end
+                    wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+-- Toggle Noclip z szybkim lataniem
+local NoclipToggle = Tabs.Main:AddToggle("Noclip", {
+    Title = "Noclip (Latanie)",
+    Default = false,
+    Callback = function(Value)
+        _G.NoclipEnabled = Value
+        _G.FlySpeed = _G.FlySpeed or 50
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        if not character or not rootPart or not humanoid then return end
+        
+        if Value then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            
+            task.spawn(function()
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bodyVelocity.Parent = rootPart
+                
+                local UIS = game:GetService("UserInputService")
+                while _G.NoclipEnabled do
+                    local direction = Vector3.new(0, 0, 0)
+                    local camera = workspace.CurrentCamera
+                    
+                    if UIS:IsKeyDown(Enum.KeyCode.W) then
+                        direction = direction + camera.CFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.S) then
+                        direction = direction - camera.CFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.A) then
+                        direction = direction - camera.CFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.D) then
+                        direction = direction + camera.CFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                        direction = direction + Vector3.new(0, 1, 0)
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                        direction = direction - Vector3.new(0, 1, 0)
+                    end
+                    
+                    bodyVelocity.Velocity = direction.Unit * (_G.FlySpeed or 50)
+                    wait()
+                end
+                
+                bodyVelocity:Destroy()
+            end)
+        else
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+})
+
+-- ESP z dostosowaniem
+_G.ESPSettings = {
+    OutlineColor = Color3.fromRGB(255, 0, 0),
+    FillColor = Color3.fromRGB(255, 0, 0),
+    OutlineTransparency = 0,
+    FillTransparency = 1
+}
+
+local ESPToggle = Tabs.Main:AddToggle("ESP", {
+    Title = "ESP (Podświetlanie Graczy)",
+    Default = false,
+    Callback = function(Value)
+        _G.ESPEnabled = Value
+        if Value then
+            task.spawn(function()
+                while _G.ESPEnabled do
+                    for _, player in pairs(game.Players:GetPlayers()) do
+                        if player ~= game.Players.LocalPlayer and player.Character then
+                            local highlight = player.Character:FindFirstChild("ESPHighlight")
+                            if not highlight then
+                                highlight = Instance.new("Highlight")
+                                highlight.Name = "ESPHighlight"
+                                highlight.Parent = player.Character
+                            end
+                            highlight.OutlineColor = _G.ESPSettings.OutlineColor
+                            highlight.FillColor = _G.ESPSettings.FillColor
+                            highlight.OutlineTransparency = _G.ESPSettings.OutlineTransparency
+                            highlight.FillTransparency = _G.ESPSettings.FillTransparency
+                        end
+                    end
+                    wait(0.5)
+                end
+            end)
+        else
+            for _, player in pairs(game.Players:GetPlayers()) do
+                if player.Character then
+                    local highlight = player.Character:FindFirstChild("ESPHighlight")
+                    if highlight then highlight:Destroy() end
+                end
+            end
+        end
+    end
+})
+
+local ESPOutlineColor = Tabs.Main:AddDropdown("ESPOutlineColor", {
+    Title = "Kolor Obramowania ESP",
+    Values = {"Czerwony", "Zielony", "Niebieski", "Żółty", "Biały"},
+    Multi = false,
+    Default = "Czerwony",
+    Callback = function(Value)
+        if Value == "Czerwony" then
+            _G.ESPSettings.OutlineColor = Color3.fromRGB(255, 0, 0)
+        elseif Value == "Zielony" then
+            _G.ESPSettings.OutlineColor = Color3.fromRGB(0, 255, 0)
+        elseif Value == "Niebieski" then
+            _G.ESPSettings.OutlineColor = Color3.fromRGB(0, 0, 255)
+        elseif Value == "Żółty" then
+            _G.ESPSettings.OutlineColor = Color3.fromRGB(255, 255, 0)
+        elseif Value == "Biały" then
+            _G.ESPSettings.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+})
+
+local ESPFillColor = Tabs.Main:AddDropdown("ESPFillColor", {
+    Title = "Kolor Wypełnienia ESP",
+    Values = {"Czerwony", "Zielony", "Niebieski", "Żółty", "Biały"},
+    Multi = false,
+    Default = "Czerwony",
+    Callback = function(Value)
+        if Value == "Czerwony" then
+            _G.ESPSettings.FillColor = Color3.fromRGB(255, 0, 0)
+        elseif Value == "Zielony" then
+            _G.ESPSettings.FillColor = Color3.fromRGB(0, 255, 0)
+        elseif Value == "Niebieski" then
+            _G.ESPSettings.FillColor = Color3.fromRGB(0, 0, 255)
+        elseif Value == "Żółty" then
+            _G.ESPSettings.FillColor = Color3.fromRGB(255, 255, 0)
+        elseif Value == "Biały" then
+            _G.ESPSettings.FillColor = Color3.fromRGB(255, 255, 255)
+        end
+    end
+})
+
+local ESPOutlineTransparency = Tabs.Main:AddSlider("ESPOutlineTransparency", {
+    Title = "Przezroczystość Obramowania ESP",
+    Default = 0,
+    Min = 0,
+    Max = 1,
+    Rounding = 1,
+    Callback = function(Value)
+        _G.ESPSettings.OutlineTransparency = Value
+    end
+})
+
+local ESPFillTransparency = Tabs.Main:AddSlider("ESPFillTransparency", {
+    Title = "Przezroczystość Wypełnienia ESP",
+    Default = 1,
+    Min = 0,
+    Max = 1,
+    Rounding = 1,
+    Callback = function(Value)
+        _G.ESPSettings.FillTransparency = Value
+    end
+})
+
+-- Teleportacja do graczy
+local TeleportDropdown = Tabs.Main:AddDropdown("Teleport", {
+    Title = "Teleport do Gracza",
+    Values = {},
+    Multi = false,
+    Default = "Wybierz gracza",
+    Callback = function(Value)
+        local targetPlayer = game.Players:FindFirstChild(Value)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+            Fluent:Notify({ Title = "✅ Teleportacja", Content = "Teleportowano do " .. Value .. "!", Duration = 4 })
+        end
+    end
+})
+
+-- Informacje o graczu
+local PlayerInfoDropdown = Tabs.Main:AddDropdown("PlayerInfo", {
+    Title = "Informacje o Graczu",
+    Values = {},
+    Multi = false,
+    Default = "Wybierz gracza",
+    Callback = function(Value)
+        local targetPlayer = game.Players:FindFirstChild(Value)
+        if targetPlayer and targetPlayer.Character then
+            local humanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+            local rootPart = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if humanoid and rootPart then
+                Fluent:Notify({
+                    Title = "Informacje o Graczu",
+                    Content = string.format("Gracz: %s\nHP: %.1f / %.1f\nPozycja: %.1f, %.1f, %.1f",
+                        targetPlayer.Name, humanoid.Health, humanoid.MaxHealth, rootPart.Position.X, rootPart.Position.Y, rootPart.Position.Z),
+                    Duration = 5
+                })
+            end
+        end
+    end
+})
+
+local function updatePlayerList()
+    local players = {}
+    for _, player in pairs(game.Players:GetPlayers()) do
+        table.insert(players, player.Name)
+    end
+    TeleportDropdown:SetValues(players)
+    PlayerInfoDropdown:SetValues(players)
+end
+
+game.Players.PlayerAdded:Connect(updatePlayerList)
+game.Players.PlayerRemoving:Connect(updatePlayerList)
+updatePlayerList()
+
+-- Niewidzialność
+local InvisibleToggle = Tabs.Main:AddToggle("Invisible", {
+    Title = "Niewidzialność",
+    Default = false,
+    Callback = function(Value)
+        local character = game.Players.LocalPlayer.Character
+        if not character then return end
+        
+        if Value then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                elseif part:IsA("Decal") then
+                    part.Transparency = 1
+                end
+            end
+            Fluent:Notify({ Title = "✅ Niewidzialność", Content = "Jesteś niewidzialny!", Duration = 4 })
+        else
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 0
+                elseif part:IsA("Decal") then
+                    part.Transparency = 0
+                end
+            end
+            Fluent:Notify({ Title = "❌ Niewidzialność", Content = "Jesteś widoczny!", Duration = 4 })
+        end
+    end
+})
+
+-- God Mode
+local GodModeToggle = Tabs.Main:AddToggle("GodMode", {
+    Title = "God Mode (Nieśmiertelność)",
+    Default = false,
+    Callback = function(Value)
+        _G.GodModeEnabled = Value
+        local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+        if not humanoid then return end
+        
+        if Value then
+            task.spawn(function()
+                while _G.GodModeEnabled do
+                    humanoid.MaxHealth = math.huge
+                    humanoid.Health = math.huge
+                    humanoid.Name = "ProtectedHumanoid"
+                    wait(0.1)
+                end
+                humanoid.MaxHealth = 100
+                humanoid.Health = 100
+                humanoid.Name = "Humanoid"
+            end)
+            Fluent:Notify({ Title = "✅ God Mode", Content = "Nieśmiertelność włączona!", Duration = 4 })
+        else
+            Fluent:Notify({ Title = "❌ God Mode", Content = "Nieśmiertelność wyłączona!", Duration = 4 })
+        end
+    end
+})
+
+-- Kamera swobodna
+local FreeCamToggle = Tabs.Main:AddToggle("FreeCam", {
+    Title = "Kamera Swobodna",
+    Default = false,
+    Callback = function(Value)
+        _G.FreeCamEnabled = Value
+        local camera = workspace.CurrentCamera
+        local player = game.Players.LocalPlayer
+        local speed = 50
+        
+        if Value then
+            camera.CameraType = Enum.CameraType.Scriptable
+            task.spawn(function()
+                local UIS = game:GetService("UserInputService")
+                while _G.FreeCamEnabled do
+                    local direction = Vector3.new(0, 0, 0)
+                    local camCFrame = camera.CFrame
+                    
+                    if UIS:IsKeyDown(Enum.KeyCode.W) then
+                        direction = direction + camCFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.S) then
+                        direction = direction - camCFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.A) then
+                        direction = direction - camCFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.D) then
+                        direction = direction + camCFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                        direction = direction + Vector3.new(0, 1, 0)
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                        direction = direction - Vector3.new(0, 1, 0)
+                    end
+                    
+                    if direction.Magnitude > 0 then
+                        camera.CFrame = camera.CFrame + (direction.Unit * speed * 0.016)
+                    end
+                    wait()
+                end
+                camera.CameraType = Enum.CameraType.Custom
+                camera.CameraSubject = player.Character and player.Character:FindFirstChild("Humanoid")
+            end)
+            Fluent:Notify({ Title = "✅ Kamera Swobodna", Content = "Kamera wolna włączona!", Duration = 4 })
+        else
+            Fluent:Notify({ Title = "❌ Kamera Swobodna", Content = "Kamera wolna wyłączona!", Duration = 4 })
+        end
+    end
+})
+
+-- Hitboxy z suwakiem
+local hitbox = nil
+local HitboxToggle = Tabs.Main:AddToggle("Hitbox", {
+    Title = "Powiększone Hitboxy",
+    Default = false,
+    Callback = function(Value)
+        _G.HitboxEnabled = Value
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        
+        if Value then
+            if not hitbox then
+                hitbox = Instance.new("Part")
+                hitbox.Name = "Hitbox"
+                hitbox.Size = Vector3.new(5, 5, 5)
+                hitbox.Transparency = 0.9
+                hitbox.CanCollide = false
+                hitbox.CFrame = rootPart.CFrame
+                hitbox.Parent = character
+                
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = rootPart
+                weld.Part1 = hitbox
+                weld.Parent = hitbox
+                
+                print("Hitbox utworzony!")
+            end
+            
+            task.spawn(function()
+                while _G.HitboxEnabled and hitbox do
+                    for _, part in pairs(hitbox:GetTouchingParts()) do
+                        local hitHumanoid = part.Parent:FindFirstChild("Humanoid")
+                        if hitHumanoid and part.Parent ~= character then
+                            hitHumanoid:TakeDamage(10)
+                            print("Zadano obrażenia: " .. part.Parent.Name)
+                        end
+                    end
+                    wait(0.1)
+                end
+            end)
+            Fluent:Notify({ Title = "✅ Hitbox", Content = "Hitbox włączony!", Duration = 4 })
+        else
+            if hitbox then
+                hitbox:Destroy()
+                hitbox = nil
+                print("Hitbox usunięty!")
+            end
+            Fluent:Notify({ Title = "❌ Hitbox", Content = "Hitbox wyłączony!", Duration = 4 })
+        end
+    end
+})
+
+local HitboxSizeSlider = Tabs.Main:AddSlider("HitboxSize", {
+    Title = "Rozmiar Hitboxa",
+    Description = "Dostosuj rozmiar hitboxa",
+    Default = 5,
+    Min = 1,
+    Max = 20,
+    Rounding = 1,
+    Callback = function(Value)
+        if hitbox and _G.HitboxEnabled then
+            hitbox.Size = Vector3.new(Value, Value, Value)
+            print("Rozmiar hitboxa zmieniony na: " .. Value)
+        end
+    end
+})
+
+-- Konfiguracja menedżerów zapisu i interfejsu
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetFolder("ZycieSawanna")
+InterfaceManager:SetFolder("ZycieSawanna")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+SaveManager:LoadAutoloadConfig()
+
+-- Wybór domyślnej zakładki
+Window:SelectTab(1)
+
+-- Powiadomienie końcowe
+Fluent:Notify({
+    Title = "Życie Sawanna",
+    Content = "Skrypt pomyślnie załadowany!",
+    Duration = 8
+})
+
+-- Obsługa odradzania postaci
+game.Players.LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    if _G.HitboxEnabled and hitbox then
+        hitbox:Destroy()
+        hitbox = nil
+        _G.HitboxEnabled = false
+        HitboxToggle:Set(false)
+        print("Postać odrodzona, hitbox wyłączony.")
+    end
+end)
