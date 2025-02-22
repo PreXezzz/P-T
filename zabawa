@@ -123,29 +123,26 @@ Tabs.Main:AddButton({
         local rootPart = character:WaitForChild("HumanoidRootPart")
         
         if rootPart then
-            -- Usuwamy istniejący Part, jeśli istnieje
             if partInstance then
                 partInstance:Destroy()
             end
             
-            -- Tworzymy nowy Part w Workspace
             partInstance = Instance.new("Part")
             partInstance.Name = "DziewczynkomatorPart"
             partInstance.Size = Vector3.new(5, 5, 5)
-            partInstance.Position = rootPart.Position + Vector3.new(0, 5, 0) -- Nad graczem
+            partInstance.Position = rootPart.Position + Vector3.new(0, 5, 0)
             partInstance.BrickColor = BrickColor.new("Bright red")
             partInstance.Material = Enum.Material.Neon
             partInstance.Anchored = true
             partInstance.CanCollide = false
             partInstance.Parent = game.Workspace
             
-            -- Respawn w pętli
             task.spawn(function()
                 while partInstance do
                     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                         partInstance.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
                     end
-                    wait(0.1) -- Respawn co 0.1 sekundy
+                    wait(0.1)
                 end
             end)
             
@@ -158,6 +155,89 @@ Tabs.Main:AddButton({
             Fluent:Notify({
                 Title = "❌ Błąd",
                 Content = "Nie znaleziono Twojej postaci!",
+                Duration = 4
+            })
+        end
+    end
+})
+
+-- Przycisk włączający latanie
+Tabs.Main:AddButton({
+    Title = "Włącz Latanie ✈️",
+    Description = "Pozwala Ci latać w powietrzu",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        if not rootPart or not humanoid then
+            Fluent:Notify({
+                Title = "❌ Błąd",
+                Content = "Nie znaleziono Twojej postaci!",
+                Duration = 4
+            })
+            return
+        end
+        
+        if _G.FlyEnabled then
+            -- Wyłączanie latania
+            _G.FlyEnabled = false
+            if _G.FlyVelocity then
+                _G.FlyVelocity:Destroy()
+                _G.FlyVelocity = nil
+            end
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            Fluent:Notify({
+                Title = "❌ Latanie Wyłączone",
+                Content = "Latanie zostało wyłączone!",
+                Duration = 4
+            })
+        else
+            -- Włączanie latania
+            _G.FlyEnabled = true
+            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            
+            _G.FlyVelocity = Instance.new("BodyVelocity")
+            _G.FlyVelocity.Velocity = Vector3.new(0, 0, 0)
+            _G.FlyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            _G.FlyVelocity.Parent = rootPart
+            
+            task.spawn(function()
+                local UIS = game:GetService("UserInputService")
+                local flySpeed = 50 -- Prędkość latania
+                
+                while _G.FlyEnabled do
+                    local direction = Vector3.new(0, 0, 0)
+                    local camera = workspace.CurrentCamera
+                    
+                    if UIS:IsKeyDown(Enum.KeyCode.W) then
+                        direction = direction + camera.CFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.S) then
+                        direction = direction - camera.CFrame.LookVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.A) then
+                        direction = direction - camera.CFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.D) then
+                        direction = direction + camera.CFrame.RightVector
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.Space) then
+                        direction = direction + Vector3.new(0, 1, 0)
+                    end
+                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+                        direction = direction - Vector3.new(0, 1, 0)
+                    end
+                    
+                    _G.FlyVelocity.Velocity = direction.Unit * flySpeed
+                    wait()
+                end
+            end)
+            
+            Fluent:Notify({
+                Title = "✅ Sukces",
+                Content = "Latanie włączone! Używaj WASD, Spacji i Ctrl.",
                 Duration = 4
             })
         end
@@ -187,10 +267,17 @@ Fluent:Notify({
     Duration = 8
 })
 
--- Czyszczenie Partu przy odrodzeniu postaci
+-- Czyszczenie Partu i latania przy odrodzeniu postaci
 game.Players.LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     if partInstance then
         partInstance:Destroy()
         partInstance = nil
+    end
+    if _G.FlyEnabled then
+        _G.FlyEnabled = false
+        if _G.FlyVelocity then
+            _G.FlyVelocity:Destroy()
+            _G.FlyVelocity = nil
+        end
     end
 end)
