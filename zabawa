@@ -37,11 +37,29 @@ Tabs.Main:AddButton({
         local rootPart = character:WaitForChild("HumanoidRootPart")
         
         if rootPart then
+            -- Pobieramy pozycję gracza
+            local myPosition = rootPart.CFrame
+            
+            -- Teleportujemy wszystkich graczy
             for _, otherPlayer in pairs(game.Players:GetPlayers()) do
                 if otherPlayer ~= player and otherPlayer.Character then
                     local targetRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if targetRoot then
-                        targetRoot.CFrame = rootPart.CFrame + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+                    local targetHumanoid = otherPlayer.Character:FindFirstChild("Humanoid")
+                    if targetRoot and targetHumanoid then
+                        -- Próbujemy ominąć anty-teleportację
+                        task.spawn(function()
+                            -- Wyłączamy chwilowo kolizję i ruch
+                            targetRoot.Anchored = true
+                            targetHumanoid.WalkSpeed = 0
+                            
+                            -- Ustawiamy pozycję
+                            targetRoot.CFrame = myPosition + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+                            
+                            -- Czekamy chwilę i przywracamy
+                            wait(0.1)
+                            targetRoot.Anchored = false
+                            targetHumanoid.WalkSpeed = 16 -- Przywracamy domyślną prędkość
+                        end)
                     end
                 end
             end
@@ -75,14 +93,14 @@ Tabs.Main:AddButton({
             existingLabel:Destroy()
         end
         
-        -- Tworzenie napisu
+        -- Tworzenie napisu w ReplicatedStorage lub Workspace, aby był widoczny dla wszystkich
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "YouTuberLabel"
         billboard.Adornee = head
         billboard.Size = UDim2.new(0, 100, 0, 50)
         billboard.StudsOffset = Vector3.new(0, 3, 0)
         billboard.AlwaysOnTop = true
-        billboard.Parent = character
+        billboard.Parent = game.ReplicatedStorage -- Umieszczamy w ReplicatedStorage, aby serwer replikował do wszystkich
         
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, 0, 1, 0)
@@ -92,6 +110,12 @@ Tabs.Main:AddButton({
         label.TextScaled = true
         label.Font = Enum.Font.SourceSansBold
         label.Parent = billboard
+        
+        -- Przenosimy BillboardGui do postaci, aby był widoczny
+        task.spawn(function()
+            wait(0.1) -- Czekamy na replikację
+            billboard.Parent = character
+        end)
         
         Fluent:Notify({
             Title = "✅ Sukces",
