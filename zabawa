@@ -37,28 +37,18 @@ Tabs.Main:AddButton({
         local rootPart = character:WaitForChild("HumanoidRootPart")
         
         if rootPart then
-            -- Pobieramy pozycję gracza
-            local myPosition = rootPart.CFrame
-            
-            -- Teleportujemy wszystkich graczy
             for _, otherPlayer in pairs(game.Players:GetPlayers()) do
                 if otherPlayer ~= player and otherPlayer.Character then
                     local targetRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
                     local targetHumanoid = otherPlayer.Character:FindFirstChild("Humanoid")
                     if targetRoot and targetHumanoid then
-                        -- Próbujemy ominąć anty-teleportację
                         task.spawn(function()
-                            -- Wyłączamy chwilowo kolizję i ruch
                             targetRoot.Anchored = true
                             targetHumanoid.WalkSpeed = 0
-                            
-                            -- Ustawiamy pozycję
-                            targetRoot.CFrame = myPosition + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
-                            
-                            -- Czekamy chwilę i przywracamy
+                            targetRoot.CFrame = rootPart.CFrame + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
                             wait(0.1)
                             targetRoot.Anchored = false
-                            targetHumanoid.WalkSpeed = 16 -- Przywracamy domyślną prędkość
+                            targetHumanoid.WalkSpeed = 16
                         end)
                     end
                 end
@@ -87,20 +77,18 @@ Tabs.Main:AddButton({
         local character = player.Character or player.CharacterAdded:Wait()
         local head = character:WaitForChild("Head")
         
-        -- Usuwanie istniejącego napisu, jeśli istnieje
         local existingLabel = character:FindFirstChild("YouTuberLabel")
         if existingLabel then
             existingLabel:Destroy()
         end
         
-        -- Tworzenie napisu w ReplicatedStorage lub Workspace, aby był widoczny dla wszystkich
         local billboard = Instance.new("BillboardGui")
         billboard.Name = "YouTuberLabel"
         billboard.Adornee = head
         billboard.Size = UDim2.new(0, 100, 0, 50)
         billboard.StudsOffset = Vector3.new(0, 3, 0)
         billboard.AlwaysOnTop = true
-        billboard.Parent = game.ReplicatedStorage -- Umieszczamy w ReplicatedStorage, aby serwer replikował do wszystkich
+        billboard.Parent = game.ReplicatedStorage
         
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, 0, 1, 0)
@@ -111,9 +99,8 @@ Tabs.Main:AddButton({
         label.Font = Enum.Font.SourceSansBold
         label.Parent = billboard
         
-        -- Przenosimy BillboardGui do postaci, aby był widoczny
         task.spawn(function()
-            wait(0.1) -- Czekamy na replikację
+            wait(0.1)
             billboard.Parent = character
         end)
         
@@ -122,6 +109,58 @@ Tabs.Main:AddButton({
             Content = "Napis YouTuber🔴 dodany nad Twoją głową!",
             Duration = 4
         })
+    end
+})
+
+-- Przycisk dodający i respawnuący Part na mojej pozycji
+local partInstance = nil
+Tabs.Main:AddButton({
+    Title = "Respawn Part na Mojej Pozycji 🟥",
+    Description = "Tworzy i respawnuje widoczny Part na Twojej pozycji",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        
+        if rootPart then
+            -- Usuwamy istniejący Part, jeśli istnieje
+            if partInstance then
+                partInstance:Destroy()
+            end
+            
+            -- Tworzymy nowy Part w Workspace
+            partInstance = Instance.new("Part")
+            partInstance.Name = "DziewczynkomatorPart"
+            partInstance.Size = Vector3.new(5, 5, 5)
+            partInstance.Position = rootPart.Position + Vector3.new(0, 5, 0) -- Nad graczem
+            partInstance.BrickColor = BrickColor.new("Bright red")
+            partInstance.Material = Enum.Material.Neon
+            partInstance.Anchored = true
+            partInstance.CanCollide = false
+            partInstance.Parent = game.Workspace
+            
+            -- Respawn w pętli
+            task.spawn(function()
+                while partInstance do
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        partInstance.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+                    end
+                    wait(0.1) -- Respawn co 0.1 sekundy
+                end
+            end)
+            
+            Fluent:Notify({
+                Title = "✅ Sukces",
+                Content = "Part respawnuje się na Twojej pozycji!",
+                Duration = 4
+            })
+        else
+            Fluent:Notify({
+                Title = "❌ Błąd",
+                Content = "Nie znaleziono Twojej postaci!",
+                Duration = 4
+            })
+        end
     end
 })
 
@@ -147,3 +186,11 @@ Fluent:Notify({
     Content = "Skrypt pomyślnie załadowany!",
     Duration = 8
 })
+
+-- Czyszczenie Partu przy odrodzeniu postaci
+game.Players.LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    if partInstance then
+        partInstance:Destroy()
+        partInstance = nil
+    end
+end)
