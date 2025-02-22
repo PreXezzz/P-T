@@ -1,0 +1,125 @@
+-- Ładowanie Fluent i dodatków
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Tworzenie okna
+local Window = Fluent:CreateWindow({
+    Title = "Dziewczynkomator",
+    SubTitle = "by PreXezzz",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- Tworzenie zakładki
+local Tabs = {
+    Main = Window:AddTab({ Title = "Główne", Icon = "home" }),
+    Settings = Window:AddTab({ Title = "Ustawienia", Icon = "settings" })
+}
+
+-- Powiadomienie przy uruchomieniu
+Fluent:Notify({
+    Title = "🚀 Skrypt Załadowany",
+    Content = "Witaj w Dziewczynkomatorze by PreXezzz!",
+    Duration = 8
+})
+
+-- Przycisk teleportacji wszystkich graczy do mnie
+Tabs.Main:AddButton({
+    Title = "Teleportuj Wszystkich do Mnie 🌍",
+    Description = "Teleportuje wszystkich graczy do Twojej pozycji",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+        
+        if rootPart then
+            for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+                if otherPlayer ~= player and otherPlayer.Character then
+                    local targetRoot = otherPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if targetRoot then
+                        targetRoot.CFrame = rootPart.CFrame + Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+                    end
+                end
+            end
+            Fluent:Notify({
+                Title = "✅ Sukces",
+                Content = "Wszyscy gracze teleportowani do Ciebie!",
+                Duration = 4
+            })
+        else
+            Fluent:Notify({
+                Title = "❌ Błąd",
+                Content = "Nie znaleziono Twojej postaci!",
+                Duration = 4
+            })
+        end
+    end
+})
+
+-- Przycisk dodający napis "YouTuber🔴" nad głową
+Tabs.Main:AddButton({
+    Title = "Dodaj Napis YouTuber🔴 📹",
+    Description = "Dodaje napis nad Twoją głową widoczny dla wszystkich",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+        local head = character:WaitForChild("Head")
+        
+        -- Usuwanie istniejącego napisu, jeśli istnieje
+        local existingLabel = character:FindFirstChild("YouTuberLabel")
+        if existingLabel then
+            existingLabel:Destroy()
+        end
+        
+        -- Tworzenie napisu
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "YouTuberLabel"
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 100, 0, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = character
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Text = "YouTuber🔴"
+        label.TextColor3 = Color3.fromRGB(255, 0, 0)
+        label.TextScaled = true
+        label.Font = Enum.Font.SourceSansBold
+        label.Parent = billboard
+        
+        Fluent:Notify({
+            Title = "✅ Sukces",
+            Content = "Napis YouTuber🔴 dodany nad Twoją głową!",
+            Duration = 4
+        })
+    end
+})
+
+-- Konfiguracja menedżerów zapisu i interfejsu
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetFolder("Dziewczynkomator")
+InterfaceManager:SetFolder("Dziewczynkomator")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+SaveManager:LoadAutoloadConfig()
+
+-- Wybór domyślnej zakładki
+Window:SelectTab(1)
+
+-- Powiadomienie końcowe
+Fluent:Notify({
+    Title = "Dziewczynkomator",
+    Content = "Skrypt pomyślnie załadowany!",
+    Duration = 8
+})
